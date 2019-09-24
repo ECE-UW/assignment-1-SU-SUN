@@ -70,11 +70,12 @@ class Street:
         else:
             print("Error: you need to input at least two points")
 
-    def __str__(self):
-        print("this is a street")
-
     def AddPointIntoSegment(self, segment, pP):
         if segment.ifPointisEndPoint(pP):
+            if segment.pA == pP:
+                segment.pA.isIntersection = True
+            if segment.pB == pP:
+                segment.pB.isIntersection = True
             return None
         SegA = Segment(segment.pA, pP)
         SegB = Segment(pP, segment.pB)
@@ -172,8 +173,9 @@ class Graph:
             self.FinalPoint[point] = point
 
     def AddEdge(self, edge):
-        if not self.edges.has_key(edge) and edge.pA != edge.pB:  # vertify the edge does exist and did not add before
-            self.edges[edge] = edge
+        if not self.edges.has_key(edge): # vertify the edge does exist and did not add before
+            if edge.pA != edge.pB:
+                self.edges[edge] = edge
 
     def AddStreet(self, command):
         pattern = r'a \"(.+?)\"(( ?\(\-?\d+,\-?\d+\))+)\s*$'
@@ -225,10 +227,8 @@ class Graph:
             for j in range(i + 1, len(SNames)):
                 s1 = initG.streets[SNames[i]]
                 s2 = initG.streets[SNames[j]]
-                S1Segs = s1.segments()
-                S2Segs = s2.segments()
-                for segA in S1Segs:
-                    for segB in S2Segs:
+                for segA in s1.segments():
+                    for segB in s2.segments():
                         inter = CalculateIntersection(segA, segB)
                         if inter:
                             inter.markAsIntersec()
@@ -267,9 +267,7 @@ G = Graph()
 while True:
     try:
         command = raw_input()
-        if command[0] == " ":
-            break
-        elif command[0] == "a":
+        if command[0] == "a":
             G.AddStreet(command)
         elif command[0] == "c":
             G.ChangeStreet(command)
