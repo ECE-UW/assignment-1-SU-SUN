@@ -6,6 +6,15 @@ import math
 import copy
 import sys
 
+pointID = {}
+
+def GiveIDtoPoint(point):
+    if pointID.has_key(point):
+        point.setID(pointID[point])
+    else:
+        point.setID(len(pointID.keys()) + 1)
+        pointID[point] = point.id
+
 class Point:
     def __init__(self, x, y):
         self.x = float(x)
@@ -31,17 +40,33 @@ class Point:
 def CalculateDistances(pA, pB):
     return math.sqrt((pA.x - pB.x) ** 2 + (pA.y - pB.y) ** 2)
 
+def GetIntersection(segA, segB):
+    l1 = Line(segA)
+    l2 = Line(segB)
+    D = l1.a * l2.b - l2.a * l1.b
+    if D == 0:
+        return None # if D = 0, line1 == line2
+    else:
+        inter_x = (l1.b * l2.c - l2.b * l1.c) / D
+        inter_y = (l1.c * l2.a - l2.c * l1.a) / D
+        inter = Point(inter_x, inter_y)
+        dAP1 = CalculateDistances(segA.pA, inter)
+        dPB1 = CalculateDistances(inter, segA.pB)
+        dAB1 = CalculateDistances(segA.pA, segA.pB)
+        dAP2 = CalculateDistances(segB.pA, inter)
+        dPB2 = CalculateDistances(inter, segB.pB)
+        dAB2 = CalculateDistances(segB.pA, segB.pB)
+        if (dAB1 >= dAP1 and dAB1 >= dPB1) and (dAB2 >= dAP2 and dAB2 >= dPB2):
+            return inter
+    return None
+
 class Segment:
     def __init__(self, pA, pB): # point A, point B
         self.pA = pA
         self.pB = pB
 
-    def ifPointisEndPoint(self, pP):
-        return pP == self.pA or pP == self.pB
-
     def __eq__(self, other):
-        return self.pA == other.pA and \
-               self.pB == other.pB
+        return self.pA == other.pA and self.pB == other.pB
 
     def __hash__(self):
         return self.__str__().__hash__()
@@ -49,14 +74,19 @@ class Segment:
     def __str__(self):
         return "  <%s,%s>" % (self.pA.id, self.pB.id)
 
+def isStreetNameValid(StreetName): # only allow letters and space characters
+    pattern = r'[a-zA-Z\s]'
+    matchObj = re.match(pattern, StreetName)
+    if matchObj:
+        return StreetName
+    else:
+        print("Error: street name's format is wrong")
 
 class Street:
     def __init__(self, name, points):
-        self.name = name # street name like "Weber Street"
-        # the street's segments are stored in dictionaries, like:
-        # Line = [[(4,2),(4,4)],[(4,4),(4,8)]]
+        self.name = name
         self.Line = []  # segments list
-        self.points = []   # points list, points = [(4,2),(4,4),(4,8)]
+        self.points = []   # points list
         self.InitSegmentsPoints(points)
 
     def segments(self):
@@ -71,14 +101,14 @@ class Street:
             print("Error: you need to input at least two points")
 
     def AddPointIntoSegment(self, segment, pP):
-        if segment.ifPointisEndPoint(pP):
+        if (segment.pA == pP) or (segment.pA == pP):
             if segment.pA == pP:
                 segment.pA.isIntersection = True
             if segment.pB == pP:
                 segment.pB.isIntersection = True
-            return None
+            return None # if it is end point, cannot be added
         SegA = Segment(segment.pA, pP)
-        SegB = Segment(pP, segment.pB)
+        SegB = Segment(pP, segment.pB) # after adding a point, turn the old segment into two new segments
         NewSegs = []
         for i in range(len(self.Line)):
             if self.Line[i] != segment:
@@ -96,27 +126,19 @@ class Street:
                     NewPoints.append(pP)
         self.points = NewPoints
 
-pointID = {}
-
-def AssignIDtoPoint(point):
-    if pointID.has_key(point):
-        point.setID(pointID[point])
-    else:
-        point.setID(len(pointID.keys()) + 1)
-        pointID[point] = point.id
-
-def isStreetNameValid(StreetName): # only allow letters and space characters
-    for l in str(StreetName): #traversing streetname
-        if not (l.isalpha() or l.isspace()):
-            print("Error: street name input wrong")
-
 def DrawPoints(pointListString): # draw point from RE pattern
     points = []
-    pointListString = str(pointListString).strip()  # remove head and tail
-    pattern = re.compile(r'\((\-?\d+),(\-?\d+)\)')  # (x,y)
-    for p in pattern.findall(pointListString):
+    pattern = re.compile(r'\((\-?\d+),(\-?\d+)\)')
+    for p in pattern.findall(str(pointListString).strip()): # remove head and tail
         points.append(Point(int(p[0]), int(p[1])))
-    return points # print point(x,y)
+    return points
+
+def OrderSegment(pA, pB):
+    if pA.id > pB.id:
+        pC = pA
+        pA = pB
+        pB = pC
+    return Segment(pA, pB)
 
 class Line:
     def __init__(self, seg):
@@ -126,34 +148,9 @@ class Line:
         self.b = self.p2.x - self.p1.x
         self.c = self.p1.x * self.p2.y - self.p1.y * self.p2.x
 
-def GenerateSegmentInOrder(pA, pB):
-    if pA.id > pB.id:
-        pC = pA
-        pA = pB
-        pB = pC
-    return Segment(pA, pB)
-
-def CalculateIntersection(segA, segB):
-    l1 = Line(segA)
-    l2 = Line(segB)
-    D = l1.a * l2.b - l2.a * l1.b
-    if D != 0:
-        inter_x = (l1.b * l2.c - l2.b * l1.c) / D
-        inter_y = (l1.c * l2.a - l2.c * l1.a) / D
-        inter = Point(inter_x, inter_y)
-        dAP1 = CalculateDistances(segA.pA, inter)
-        dPB1 = CalculateDistances(inter, segA.pB)
-        dAB1 = CalculateDistances(segA.pA, segA.pB)
-        dAP2 = CalculateDistances(segB.pA, inter)
-        dPB2 = CalculateDistances(inter, segB.pB)
-        dAB2 = CalculateDistances(segB.pA, segB.pB)
-        if (dAB1 >= dAP1 and dAB1 >= dPB1) and (dAB2 >= dAP2 and dAB2 >= dPB2):
-            return inter
-    return None
-
 class Graph:
     def __init__(self):
-        self.streets = {}  # dictionary like {"Weber Street" (2,-1) (2,2)}
+        self.streets = {}
         self.FinalPoint = {}
         '''
         include:
@@ -167,9 +164,9 @@ class Graph:
         b.both lie on the same street 
         c.one is reachable from the other without traversing another vertex
         '''
-    def AddPointToFinal(self, point):
+    def AddFinalPoint(self, point):
         if not self.FinalPoint.has_key(point):  # vertify point not in final results
-            AssignIDtoPoint(point)
+            GiveIDtoPoint(point)
             self.FinalPoint[point] = point
 
     def AddEdge(self, edge):
@@ -181,55 +178,54 @@ class Graph:
         pattern = r'a \"(.+?)\"(( ?\(\-?\d+,\-?\d+\))+)\s*$'
         matchObj = re.match(pattern, command)
         if matchObj: # meet the requirement
-            streetName = matchObj.group(1)
+            streetName = matchObj.group(1).upper()
             isStreetNameValid(streetName)
             if self.streets.has_key(streetName):
-                return # already exsit, do nothing
+                print("Error: Street is already exists")
             pointListString = matchObj.group(2)
             points = DrawPoints(pointListString)
             self.streets[streetName] = Street(streetName, points)
         else:
-            print("Error: command input wrong")
+            print("Error: your input format is wrong")
 
     def RemoveStreet(self, command):
         pattern = r'r \"(.+?)\"'
         matchObj = re.match(pattern, command)
         if matchObj:
-            streetName = matchObj.group(1)
+            streetName = matchObj.group(1).upper()
             isStreetNameValid(streetName)
             if self.streets.has_key(streetName):  # if exsit, delete
                 del self.streets[streetName]
             else:
-                print("Error: this street is not exist")
+                print("Error: this street is not exist, cannot be removed")
         else:
-            print("Error: command input wrong")
+            print("Error: your input format is wrong")
 
     def ChangeStreet(self, command):
         pattern = r'c \"(.+?)\"(( ?\(\-?\d+,\-?\d+\))+)\s*$'
         matchObj = re.match(pattern, command)
         if matchObj:
-            streetName = matchObj.group(1)
+            streetName = matchObj.group(1).upper()
             isStreetNameValid(streetName)
-            if self.streets.has_key(streetName): # exsit street can be chaxnged
+            if self.streets.has_key(streetName): # only exsit street can be chaxnged
                 pointListString = matchObj.group(2)
                 points = DrawPoints(pointListString)
                 self.streets[streetName] = Street(streetName, points)
             else:
-                print("Error: this street is not exist")
+                print("Error: this street is not exist, cannot be changed")
         else:
-            print("Error: command input wrong")
+            print("Error: your input format is wrong")
 
     def generate(self):
         initG = copy.deepcopy(G)
         SNames = initG.streets.keys()
-
-        for i in range(len(SNames) - 1):
-            for j in range(i + 1, len(SNames)):
+        for i in range(len(SNames) - 1): # start from first street's first segment
+            for j in range(i + 1, len(SNames)): # compare with next street's first segment
                 s1 = initG.streets[SNames[i]]
                 s2 = initG.streets[SNames[j]]
                 for segA in s1.segments():
                     for segB in s2.segments():
-                        inter = CalculateIntersection(segA, segB)
+                        inter = GetIntersection(segA, segB)
                         if inter:
                             inter.markAsIntersec()
                             s1.AddPointIntoSegment(segA, inter)
@@ -239,14 +235,14 @@ class Graph:
             S = initG.streets[SNames[i]]
             for j in range(len(S.points)):
                 if S.points[j].isIntersection:
-                    initG.AddPointToFinal(S.points[j])
+                    initG.AddFinalPoint(S.points[j])
                     if j - 1 >= 0:
-                        initG.AddPointToFinal(S.points[j - 1])
-                        edge = GenerateSegmentInOrder(initG.FinalPoint[S.points[j - 1]], initG.FinalPoint[S.points[j]])
+                        initG.AddFinalPoint(S.points[j - 1])
+                        edge = OrderSegment(initG.FinalPoint[S.points[j - 1]], initG.FinalPoint[S.points[j]])
                         initG.AddEdge(edge)
                     if j + 1 < len(S.points):
-                        initG.AddPointToFinal(S.points[j + 1])
-                        edge = GenerateSegmentInOrder(initG.FinalPoint[S.points[j]], initG.FinalPoint[S.points[j + 1]])
+                        initG.AddFinalPoint(S.points[j + 1])
+                        edge = OrderSegment(initG.FinalPoint[S.points[j]], initG.FinalPoint[S.points[j + 1]])
                         initG.AddEdge(edge)
 
         print("V={")
@@ -258,7 +254,7 @@ class Graph:
             count += 1
             if count < len(initG.edges):
                 print(str(e) + ",")
-            else:  # last one don't need to print ,
+            else:  # last one don't need to print ","
                 print(str(e))
         print("}")
 
