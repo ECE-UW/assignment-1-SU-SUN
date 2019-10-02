@@ -29,7 +29,7 @@ class Point:
         self.isIntersection = True
 
     def __str__(self):
-        return "  " + str(self.id) + ":\t" + "(" + str(self.x) + "," + str(self.y) + ")"
+        return "  %s:\t(%.2f,%.2f)" % (self.id, self.x, self.y)
 
     def __hash__(self):
         return ("x:%s,y:%s" % (self.x, self.y)).__hash__()
@@ -175,7 +175,7 @@ class Graph:
                 self.edges[edge] = edge
 
     def AddStreet(self, command):
-        pattern = r'a \"(.+?)\"(( ?\(\-?\d+,\-?\d+\))+)\s*$'
+        pattern = r'a *\"(.+?)\"(( ?\(\-?\d+,\-?\d+\))+)\s*$'
         matchObj = re.match(pattern, command)
         if matchObj: # meet the requirement
             streetName = matchObj.group(1).upper()
@@ -189,7 +189,7 @@ class Graph:
             print("Error: your input format is wrong")
 
     def RemoveStreet(self, command):
-        pattern = r'r \"(.+?)\"'
+        pattern = r'r *\"(.+?)\"$'
         matchObj = re.match(pattern, command)
         if matchObj:
             streetName = matchObj.group(1).upper()
@@ -202,7 +202,7 @@ class Graph:
             print("Error: your input format is wrong")
 
     def ChangeStreet(self, command):
-        pattern = r'c \"(.+?)\"(( ?\(\-?\d+,\-?\d+\))+)\s*$'
+        pattern = r'c *\"(.+?)\"(( ?\(\-?\d+,\-?\d+\))+)\s*$'
         matchObj = re.match(pattern, command)
         if matchObj:
             streetName = matchObj.group(1).upper()
