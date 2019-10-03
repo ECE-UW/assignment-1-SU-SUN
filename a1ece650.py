@@ -275,3 +275,4 @@ while True:
             print("Error: command input wrong, only allowed a, c, r, g")
     except EOFError:
         sys.exit()
+        # commit message
